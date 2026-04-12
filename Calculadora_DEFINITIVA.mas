@@ -1,0 +1,1152 @@
+/ ==========================================
+/ 1. LIMPANDO O PAINEL
+/ ==========================================
+         Load InicioDisplay
+         Store PonteiroLimpo   
+         Load TotalPixels
+         Store ContadorPixels  
+
+LoopLimpa, Load CorPreta
+         StoreI PonteiroLimpo  
+
+         Load PonteiroLimpo
+         Add um                
+         Store PonteiroLimpo
+
+         Load ContadorPixels
+         Subt um               
+         Store ContadorPixels
+
+         Skipcond 400          
+         Jump LoopLimpa        
+
+/ ==========================================
+/ 2. RECEBIMENTO E ORGANIZAÇÃO DE DADOS
+/ ==========================================
+Clear
+Store resultado
+Store é_Negativo    / Zera a bandeira de negativo a cada nova conta
+Input
+Store operador
+Input
+Store X
+Input
+Store Y
+
+/ Regra: 1=Soma, 2=Subtração, 3=Multiplicação, 4=Divisão
+roteador, Load operador
+          Subt um         
+          Skipcond 400    
+          Jump testaSubt 
+          Jump adic
+
+testaSubt, Subt um        
+          Skipcond 400    
+          Jump testaMult  
+          Jump subt       
+
+testaMult, Subt um        
+          Skipcond 400    
+          Jump div        
+          Jump multi      
+
+/ ==========================================
+/ 3. OPERAÇÕES MATEMÁTICAS
+/ ==========================================
+/ Adição
+adic,    Load X
+         Add Y
+         Store resultado
+         Jump vaiProDisplay  
+
+/ Subtração
+subt,    Load X
+         Subt Y
+         Store resultado
+         Jump vaiProDisplay  
+
+/ Multiplicação
+multi,   Load Y
+         Skipcond 000
+         Jump verificado
+    
+         / Invertendo o Y pois é negativo
+         Subt Y
+         Subt Y
+         Store Y
+         Clear
+         Add um
+         Store é_Negativo
+         Clear
+         Jump loopM
+    
+verificado, Clear
+         Store é_Negativo
+         Load Y
+         Skipcond 400
+         Jump loopM 
+         Jump vaiProDisplay 
+    
+loopM,   Load resultado
+         Add X
+         Store resultado
+         Load Y
+         Subt um
+         Store Y
+         Skipcond 400 
+         Jump loopM 
+         
+         Load é_Negativo
+         Skipcond 800
+         Jump vaiProDisplay 
+    
+         Load resultado
+         Subt resultado
+         Subt resultado
+         Store resultado
+         Jump vaiProDisplay
+
+/ Divisão
+div,     Load Y
+         Skipcond 400   
+         Jump loopD
+         Jump error
+
+loopD,   Load X
+         Subt Y
+         Skipcond 000
+         Jump continua
+         Jump vaiProDisplay 
+
+continua, Store X
+         Load resultado
+         Add um
+         Store resultado
+         Jump loopD
+
+
+/ ==========================================
+/ 4. O FILTRO UNIVERSAL E EXTRAÇÃO
+/ ==========================================
+vaiProDisplay, Output            / Mantém o Output padrão pro log
+               Load resultado
+               Skipcond 000 
+               Jump Prepara      / Falso: Pula pra extração.
+
+               
+               Clear
+               Add um
+               Store é_Negativo
+               
+               / Inverte o resultado para o extrator funcionar (0 - resultado)
+               Clear
+               Subt resultado
+               Store resultado
+               
+Prepara,       Load resultado
+               Store RestoAtual
+               Clear
+               Store Digito1     / Zera tudo para contas consecutivas
+               Store Digito2
+               Store Digito3
+               Store Digito4
+
+/ LOOP DO MILHAR
+LoopMil, Load RestoAtual
+         Subt Mil
+         Skipcond 000
+         Jump ContMil
+         Jump LoopCem
+
+ContMil, Store RestoAtual
+         Load Digito1
+         Add um
+         Store Digito1
+         Jump LoopMil
+
+/ LOOP DA CENTENA
+LoopCem, Load RestoAtual
+         Subt Cem            
+         Skipcond 000        
+         Jump ContCem        
+         Jump LoopDez
+
+ContCem, Store RestoAtual    
+         Load Digito2
+         Add um              
+         Store Digito2
+         Jump LoopCem        
+
+/ LOOP DA DEZENA
+LoopDez, Load RestoAtual
+         Subt Dez
+         Skipcond 000
+         Jump ContDez
+         Jump FimDez
+
+ContDez, Store RestoAtual    
+         Load Digito3
+         Add um              
+         Store Digito3
+         Jump LoopDez        
+
+/ AS UNIDADES
+FimDez,  Load RestoAtual
+         Store Digito4 
+
+
+/ ==========================================
+/ 5. O ESTRUTURA DO DISPLAY 
+/ ==========================================
+         Load InicioDisplay
+         Store PonteiroBase  
+
+         /  CHECA O SINAL DE NEGATIVO 
+         Load é_Negativo
+         Skipcond 400        
+         Jump FluxoNegativo  
+
+         /  FLUXO POSITIVO 
+         Load Digito1
+         JnS RoteadorDisplay 
+         Jump DesenhaResto   / Vai desenhar o resto dos números
+
+         /  FLUXO NEGATIVO  
+ 
+FluxoNegativo,JnS DesenhaMenos    / Desenha o sinal de menos (substituindo a 1ª casa)
+         / E continua solto para o DesenhaResto abaixo
+
+
+DesenhaResto,Load Digito2
+         JnS RoteadorDisplay 
+
+         Load Digito3
+         JnS RoteadorDisplay 
+
+         Load Digito4
+         JnS RoteadorDisplay 
+
+         Halt       / FIM DO PROGRAMA
+         
+         
+/ ==========================================
+/ 6. TRATAMENTO DE ERRO (DIVISÃO POR ZERO)
+/ ==========================================
+error,   Load InicioDisplay
+         Store PonteiroBase  
+         Jump Erro_E         
+
+
+/ ==========================================
+/ 7. ROTINAS DE DESENHO
+/ ==========================================
+RoteadorDisplay, HEX 0000    
+         Skipcond 400
+         Jump testaUm
+         Jump Desenha0
+
+testaUm, Subt um
+         Skipcond 400
+         Jump testaDois      
+         Jump Desenha1       
+
+testaDois, Subt um
+         Skipcond 400
+         Jump testaTres
+         Jump Desenha2
+
+testaTres, Subt um
+         Skipcond 400
+         Jump testaQuatro
+         Jump Desenha3
+
+testaQuatro, Subt um
+         Skipcond 400
+         Jump testaCinco
+         Jump Desenha4
+
+testaCinco, Subt um
+         Skipcond 400
+         Jump testaSeis
+         Jump Desenha5
+
+testaSeis, Subt um
+         Skipcond 400
+         Jump testaSete
+         Jump Desenha6
+
+testaSete, Subt um
+         Skipcond 400
+         Jump testaOito
+         Jump Desenha7
+
+testaOito, Subt um
+         Skipcond 400
+         Jump testaNove
+         Jump Desenha8
+
+testaNove, Subt um
+         Skipcond 400
+         Jump EncerraRotina  
+         Jump Desenha9
+
+EncerraRotina, JumpI RoteadorDisplay
+
+/ MOTOR DE PASSO
+MoveCursor, Load PonteiroBase
+            Add quatro           
+            Store PonteiroBase   
+            Jump EncerraRotina   
+
+/ SINAL DE MENOS 
+DesenhaMenos, HEX 0000       
+          Load PonteiroBase
+          Add PulaLinhas2    
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro    
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro    
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro    
+          Load PonteiroBase
+          Add quatro
+          Store PonteiroBase
+          JumpI DesenhaMenos 
+
+/  SPRITES DOS NÚMEROS 
+Desenha0, Load PonteiroBase
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add PulaLinha        
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add PulaLinhas2      
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add PulaLinhas3      
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add PulaLinhas4      
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Jump MoveCursor      
+
+Desenha1, Load PonteiroBase
+          Add um               
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add um
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add um
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add um
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Load PonteiroBase
+          Add um
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro      
+          Jump MoveCursor 
+
+Desenha2, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+Desenha3, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+Desenha4, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+Desenha5, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+Desenha6, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+Desenha7, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+Desenha8, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+Desenha9, Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Jump MoveCursor
+
+/ -- LETRAS DE ERRO --
+Erro_E,   Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase
+          Add quatro
+          Store PonteiroBase
+          Jump Erro_R1
+
+Erro_R1,  Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase
+          Add quatro
+          Store PonteiroBase
+          Jump Erro_R2
+
+Erro_R2,  Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase
+          Add quatro
+          Store PonteiroBase
+          Jump Erro_O
+
+Erro_O,   Load PonteiroBase 
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinha
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas2
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas3
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add dois
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load PonteiroBase 
+          Add PulaLinhas4
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Load Ponteiro
+          Add um
+          Store Ponteiro
+          Load CorBranca
+          StoreI Ponteiro
+          Halt  
+
+/ ==========================================
+/ 8. VARIÁVEIS
+/ ==========================================
+um,            DEC 1
+dois,          DEC 2
+quatro,        DEC 4
+é_Negativo,    DEC 0
+operador,      DEC 0
+X,             DEC 0
+Y,             DEC 0 
+resultado,     DEC 0
+
+Mil,           DEC 1000
+Cem,           DEC 100
+Dez,           DEC 10
+RestoAtual,    DEC 0
+Digito1,       DEC 0
+Digito2,       DEC 0
+Digito3,       DEC 0
+Digito4,       DEC 0
+/ ==========================================
+/ VARIAVEIS PARA O DISPLAY
+/ ==========================================
+CorBranca,     HEX FFFF
+PulaLinha,     DEC 16
+PulaLinhas2,   DEC 32
+PulaLinhas3,   DEC 48
+PulaLinhas4,   DEC 64
+InicioDisplay, HEX 0F00
+PonteiroBase,  HEX 0000
+Ponteiro,      HEX 0000
+LinhaDeBaixo,  HEX 0F60
+
+CorPreta,      HEX 0000
+TotalPixels,   DEC 256
+ContadorPixels,DEC 0
+PonteiroLimpo, HEX 0000
+
+
